@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
-app.include_router(chat.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,6 +13,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(chat.router)
 
 @app.get("/")
 def root():
