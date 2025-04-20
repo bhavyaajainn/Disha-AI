@@ -8,7 +8,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://disha-ai.vercel.app"],  
+    allow_origins=["https://disha-ai.vercel.app", "https://disha-ai.onrender.com"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
