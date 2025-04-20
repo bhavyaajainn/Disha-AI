@@ -1,0 +1,22 @@
+[
+  {
+    "title":"Women Who Code",
+    "description":"A global nonprofit dedicated to inspiring women to excel in technology careers.",
+    "url":"https:\/\/www.womenwhocode.com"
+  },
+  {
+    "title":"Tech Career Growth Discord",
+    "description":"Community for aspiring and experienced developers to grow their careers.",
+    "url":"https:\/\/discord.gg\/techcareergrowth"
+  },
+  {
+    "title":"Girls in Tech",
+    "description":"A nonprofit that works to put an end to gender inequality in high-tech industries.",
+    "url":"https:\/\/www.girlsintech.org"
+  },
+  {
+    "title":"Dev.to #mentorship",
+    "description":"Browse mentorship-related articles and discussions from the dev community.",
+    "url":"https:\/\/dev.to\/t\/mentorship"
+  }
+]

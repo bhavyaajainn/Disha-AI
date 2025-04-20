@@ -1,0 +1,22 @@
+[
+  {
+    "title":"SheLeads Mentorship Program",
+    "description":"A global initiative connecting women with industry leaders in tech.",
+    "url":"https:\/\/example.com\/sheleads"
+  },
+  {
+    "title":"TechWomen Global Exchange",
+    "description":"U.S. Department of State program for women in STEM from Africa, Central and South Asia, and the Middle East.",
+    "url":"https:\/\/www.techwomen.org"
+  },
+  {
+    "title":"MentorCruise",
+    "description":"1-on-1 mentorship platform for tech professionals.",
+    "url":"https:\/\/mentorcruise.com"
+  },
+  {
+    "title":"ADPList",
+    "description":"A free global platform for finding and scheduling time with mentors.",
+    "url":"https:\/\/adplist.org"
+  }
+]
