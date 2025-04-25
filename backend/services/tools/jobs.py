@@ -25,7 +25,11 @@ def remote_job_tool(query: str = "") -> str:
     elif not results:
         results.append(f"⚠️ No jobs found for '{query}'")
 
-    return "\n\n".join(results)
+    # Add a clear header and make the links more prominent
+    header = f"🔍 **Job Search Results for: '{query}'**\n\n"
+    footer = "\n\n📱 Click on the application links above to apply directly on the company websites."
+    
+    return header + "\n\n".join(results) + footer
 
 
 def sanitize_query(query):
@@ -75,10 +79,10 @@ def fetch_from_remotive(encoded_query, all_jobs):
 
         return [
             f"🟢 **[Remotive] {j['title']}**\n"
-            f"- 🏢 {j['company_name']}\n"
+            f"- 🏢 {j.get('company_name', 'N/A')}\n"
             f"- 📍 {j.get('candidate_required_location', 'Remote')}\n"
             f"- 📌 {j.get('job_type', 'N/A')}\n"
-            f"- 🔗 [Apply here]({j.get('url', '#')})"
+            f"- 🔗 **[APPLY HERE]({j.get('url', '#')})** ← Click to apply directly"
             for j in jobs_data
         ]
     except Exception as e:
@@ -120,7 +124,7 @@ def fetch_from_remoteok(encoded_query, all_jobs):
             f"- 🏢 {j.get('company', 'Unknown')}\n"
             f"- 📍 Remote\n"
             f"- 📌 {j.get('tags', ['N/A'])[0] if j.get('tags') else 'N/A'}\n"
-            f"- 🔗 [Apply here](https://remoteok.io{j.get('url', '#')})"
+            f"- 🔗 **[APPLY HERE](https://remoteok.io{j.get('url', '#')})** ← Click to apply directly"
             for j in jobs_data
         ]
     except Exception as e:
@@ -144,7 +148,7 @@ def fetch_from_indianapi(encoded_query, all_jobs):
             f"- 🏢 {j.get('company_name', 'N/A')}\n"
             f"- 📍 {j.get('location', 'Remote')}\n"
             f"- 📌 {', '.join(j.get('tags', ['N/A']))}\n"
-            f"- 🔗 [Apply here]({j.get('url', '#')})"
+            f"- 🔗 **[APPLY HERE]({j.get('url', '#')})** ← Click to apply directly"
             for j in jobs_data
         ]
     except Exception as e:

@@ -70,13 +70,24 @@ def ask_disha_with_tools(prompt: str) -> str:
         f"```\n{tool_output}\n```\n\n"
         "Please summarize the results in a helpful, structured format that includes:\n"
         "- Clear key takeaways with bullet points\n"
-        "- Important links should be preserved or rephrased as raw URLs\n"
+        "- IMPORTANT: Include and preserve ALL links exactly as they appear in the source\n"
+        "- Make sure links are properly formatted as markdown (e.g., [text](url))\n" 
+        "- The links should be prominent and clearly labeled as action links\n"
         "- Friendly and concise tone\n"
-        "- Avoid repeating everything unless it's useful"
+        "- Encourage the user to click on the links to take action\n\n"
+        "If there are job listings, specifically tell the user they can apply by clicking on the application links."
     )
 
     try:
         summary = llm.invoke(summarization_prompt)
-        return str(summary.content if hasattr(summary, "content") else summary)
+        result = str(summary.content if hasattr(summary, "content") else summary)
+        
+        # Verify links are present
+        if "[" in tool_output and "](" in tool_output and ")" in tool_output:
+            if not ("[" in result and "](" in result and ")" in result):
+                # Add a note about missing links
+                result += "\n\n**Note:** For direct access to resources mentioned above, please refer to the links in the original listings."
+        
+        return result
     except Exception as e:
         return tool_output

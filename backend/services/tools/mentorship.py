@@ -1,6 +1,6 @@
 import json
 import os
-from langchain.tools import tool  # ✅ Import added before usage
+from langchain.tools import tool
 
 @tool("mentorship_tool", return_direct=True)
 def mentorship_tool(query: str = "") -> str:
@@ -17,21 +17,24 @@ def mentorship_tool(query: str = "") -> str:
 
     query_clean = query.strip().strip("'").strip('"')
 
-    if not query_clean:
-        return "\n\n".join([
-            f"👩‍🏫 **{m['title']}**\n- {m['description']}\n- 🔗 [Visit]({m['url']})"
-            for m in data
-        ])
+    if query_clean:
+        filtered = [
+            m for m in data
+            if query_clean.lower() in m["title"].lower() or query_clean.lower() in m["description"].lower()
+        ]
+        
+        if not filtered:
+            return f"⚠️ No mentorship programs found for '{query_clean}'"
+        
+        data = filtered
 
-    filtered = [
-        m for m in data
-        if query_clean.lower() in m["title"].lower() or query_clean.lower() in m["description"].lower()
+    # Add a clear header and make the links more prominent
+    header = "👩‍🏫 **Mentorship Programs and Resources**\n\n"
+    footer = "\n\n💡 Click on the links above to access these mentorship opportunities and accelerate your career growth."
+    
+    mentorship_listings = [
+        f"**{m['title']}**\n- {m['description']}\n- 🔗 **[ACCESS PROGRAM]({m['url']})** ← Click to join"
+        for m in data
     ]
-
-    if not filtered:
-        return f"⚠️ No mentorship programs found for '{query_clean}'"
-
-    return "\n\n".join([
-        f"👩‍🏫 **{m['title']}**\n- {m['description']}\n- 🔗 [Visit]({m['url']})"
-        for m in filtered
-    ])
+    
+    return header + "\n\n".join(mentorship_listings) + footer

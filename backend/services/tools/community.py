@@ -25,7 +25,13 @@ def community_tool(query: str = "") -> str:
     if not data:
         return f"⚠️ No communities found for '{query}'"
 
-    return "\n\n".join([
-        f"🌐 **{c['title']}**\n- {c['description']}\n- 🔗 {c['url']}"
+    # Add a clear header and make the links more prominent
+    header = "🌐 **Tech Communities and Networks**\n\n"
+    footer = "\n\n💡 Click on the links above to connect with these communities and expand your professional network."
+    
+    community_listings = [
+        f"**{c['title']}**\n- {c['description']}\n- 🔗 **[JOIN COMMUNITY]({c['url']})** ← Click to connect"
         for c in data
-    ])
+    ]
+    
+    return header + "\n\n".join(community_listings) + footer
