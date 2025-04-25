@@ -26,6 +26,8 @@ import SendIcon from "@mui/icons-material/Send";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
+import MicIcon from '@mui/icons-material/Mic'; // Import mic icon
+import MicOffIcon from '@mui/icons-material/MicOff'; // Import mic off icon
 import { Message } from "@/types";
 import { supabase } from "../utils/config";
 import { 
@@ -91,6 +93,62 @@ function ChatContent() {
   const [userId, setUserId] = useState<string | null>(null);
   
   /**
+   * Type definition for SpeechRecognition API
+   */
+  interface SpeechRecognitionEvent extends Event {
+    results: SpeechRecognitionResultList;
+    resultIndex: number;
+    interpretation: unknown; // Replace 'any' with 'unknown' or a more specific type if known
+  }
+
+  interface SpeechRecognitionResult {
+    isFinal: boolean;
+    [index: number]: SpeechRecognitionAlternative;
+  }
+
+  interface SpeechRecognitionResultList {
+    length: number;
+    item(index: number): SpeechRecognitionResult;
+    [index: number]: SpeechRecognitionResult;
+  }
+
+  interface SpeechRecognitionAlternative {
+    transcript: string;
+    confidence: number;
+  }
+
+  interface SpeechRecognitionError extends Event {
+    error: string;
+    message: string;
+  }
+
+  interface SpeechRecognition extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    maxAlternatives: number;
+    start(): void;
+    stop(): void;
+    abort(): void;
+    onerror: ((this: SpeechRecognition, ev: SpeechRecognitionError) => void) | null;
+    onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+    onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+    onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+  }
+
+  interface SpeechRecognitionConstructor {
+    new (): SpeechRecognition;
+    prototype: SpeechRecognition;
+  }
+
+  /**
+   * Speech recognition states
+   */
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  
+  /**
    * Dialog control states
    * Manage dialog visibility and related state
    */
@@ -114,6 +172,78 @@ function ChatContent() {
   const searchParams = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textFieldRef = useRef<HTMLTextAreaElement>(null) as React.RefObject<HTMLTextAreaElement>;
+
+  /**
+   * Initialize speech recognition on component mount
+   */
+  useEffect(() => {
+    // Check if browser supports speech recognition
+    if (typeof window !== 'undefined') {
+      // Properly declare the window interfaces for TypeScript
+      interface WindowWithSpeechRecognition extends Window {
+        SpeechRecognition?: SpeechRecognitionConstructor;
+        webkitSpeechRecognition?: SpeechRecognitionConstructor;
+      }
+      
+      const windowWithSpeech = window as WindowWithSpeechRecognition;
+      const SpeechRecognitionAPI = windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
+      
+      if (SpeechRecognitionAPI) {
+        recognitionRef.current = new SpeechRecognitionAPI();
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        
+        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = Array.from(event.results)
+            .map((result) => result[0])
+            .map((result) => result.transcript)
+            .join('');
+          
+          setInput(transcript);
+        };
+        
+        recognitionRef.current.onerror = (event: SpeechRecognitionError) => {
+          console.error('Speech recognition error', event.error);
+          setIsListening(false);
+          setSnackbarMessage(`Speech recognition error: ${event.error}`);
+          setSnackbarOpen(true);
+        };
+        
+        recognitionRef.current.onend = () => {
+          if (isListening && recognitionRef.current) {
+            recognitionRef.current.start();
+          }
+        };
+      } else {
+        setSpeechSupported(false);
+      }
+    }
+    
+    // Cleanup
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  /**
+   * Handle listening state changes
+   */
+  useEffect(() => {
+    if (!recognitionRef.current) return;
+    
+    try {
+      if (isListening) {
+        recognitionRef.current.start();
+      } else {
+        recognitionRef.current.stop();
+      }
+    } catch (error) {
+      console.error('Speech recognition control error:', error);
+      setIsListening(false);
+    }
+  }, [isListening]);
 
   /**
    * Initial setup
@@ -168,6 +298,27 @@ function ChatContent() {
   }, [input]);
 
   /**
+   * Toggle speech recognition
+   */
+  const toggleListening = () => {
+    if (!speechSupported) {
+      setSnackbarMessage("Speech recognition is not supported in your browser.");
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    setIsListening((prevState) => !prevState);
+    
+    if (!isListening) {
+      setSnackbarMessage("Listening...");
+      setSnackbarOpen(true);
+    } else {
+      setSnackbarMessage("Stopped listening.");
+      setSnackbarOpen(true);
+    }
+  };
+
+  /**
    * Event handlers for user interactions
    */
   const handleQuickOptionClick = (option: string) => {
@@ -181,6 +332,11 @@ function ChatContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+    
+    // Stop listening if active
+    if (isListening) {
+      setIsListening(false);
+    }
     
     await handleSubmitMessage(
       input,
@@ -402,6 +558,25 @@ function ChatContent() {
           }}
           disabled={isLoading}
         />
+        
+        {/* Speech-to-text button */}
+        <Tooltip title={isListening ? "Stop listening" : "Speak your message"}>
+          <IconButton
+            onClick={toggleListening}
+            disabled={isLoading || !speechSupported}
+            className={`mic-button ${isListening ? 'listening' : ''}`}
+            sx={{
+              mr: 1,
+              color: isListening ? '#e91e63' : 'grey.600',
+              '&.listening': {
+                animation: 'pulse 1.5s infinite'
+              }
+            }}
+          >
+            {isListening ? <MicIcon /> : <MicOffIcon />}
+          </IconButton>
+        </Tooltip>
+        
         <Button
           type="submit"
           variant="contained"
