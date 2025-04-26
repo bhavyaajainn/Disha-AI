@@ -1,5 +1,3 @@
-// frontend/types.ts
-
 import { AuthError, User } from "@supabase/supabase-js";
 import { ReactNode, ErrorInfo } from "react";
 
@@ -48,8 +46,6 @@ export interface UserResponse {
   user: User | null;
   error: AuthError | null;
 }
-
-// New types for guest mode
 
 export interface GuestSession {
   id: string;

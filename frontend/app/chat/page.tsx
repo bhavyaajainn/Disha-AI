@@ -270,7 +270,7 @@ function ChatContent() {
             // Create a new guest session if none exists
             const guestId = `guest_${Date.now()}`;
             setUserId(guestId);
-            const randomGuestName = searchParams.get("name") || "Guest User";
+            const randomGuestName = searchParams.get("name") ?? "Guest User";
             localStorage.setItem("dishaGuestSession", JSON.stringify({
               id: guestId,
               name: randomGuestName,
@@ -325,7 +325,7 @@ function ChatContent() {
     } else {
       router.push("/");
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, isGuest]);
 
   /**
    * Auto-scroll to bottom when new messages arrive

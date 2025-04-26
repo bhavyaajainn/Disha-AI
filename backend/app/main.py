@@ -5,8 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from services.context_manager import EphemeralContextManager
 
 app = FastAPI()
-
-# Initialize global services
 context_manager = EphemeralContextManager()
 
 app.add_middleware(

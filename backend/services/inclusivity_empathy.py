@@ -1,12 +1,10 @@
 # services/inclusivity_empathy.py
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 class InclusivityEmpathyService:
-    """Service for enhancing Disha's responses with inclusivity and empathy"""
-    
     def __init__(self):
-        # Patterns that might indicate emotional states
+       
         self.emotion_patterns = {
             'frustration': [r'(frustrated|annoying|not working|tired of|fed up)', 0.8],
             'anxiety': [r'(worried|anxious|nervous|scared|fear|stress)', 0.8],
@@ -14,8 +12,7 @@ class InclusivityEmpathyService:
             'confusion': [r'(confused|don\'t understand|what does|how does|unclear)', 0.8],
             'disappointment': [r'(disappointed|sad|upset|let down)', 0.8]
         }
-        
-        # Cultural context detection patterns
+       
         self.cultural_contexts = {
             'india_specific': [
                 r'(india|indian|bangalore|delhi|mumbai|hyderabad|pune|chennai)',
@@ -25,7 +22,6 @@ class InclusivityEmpathyService:
             ]
         }
         
-        # Inclusive language patterns
         self.inclusive_swaps = {
             r'\b(mankind|manpower|manmade)\b': 'humanity|workforce|artificial',
             r'\b(chairman|policeman|fireman)\b': 'chair|police officer|firefighter',
@@ -34,8 +30,7 @@ class InclusivityEmpathyService:
             r'\bhe or she\b': 'they',
             r'\bhis or her\b': 'their'
         }
-        
-        # Career milestones for empathetic responses
+
         self.career_milestones = [
             'first job', 'job search', 'applying', 'interview', 'rejected', 
             'offer', 'negotiation', 'starting new job', 'promotion', 'raise',
@@ -43,7 +38,7 @@ class InclusivityEmpathyService:
         ]
     
     def detect_emotion(self, text: str) -> Tuple[str, float]:
-        """Detect potential emotional state from text"""
+      
         text = text.lower()
         detected = []
         
@@ -51,13 +46,13 @@ class InclusivityEmpathyService:
             if re.search(pattern, text):
                 detected.append((emotion, confidence))
         
-        # Return the emotion with highest confidence or None
+       
         if detected:
             return max(detected, key=lambda x: x[1])
         return (None, 0.0)
     
     def detect_cultural_context(self, text: str) -> List[str]:
-        """Detect potential cultural contexts from text"""
+       
         text = text.lower()
         detected = []
         
@@ -69,8 +64,8 @@ class InclusivityEmpathyService:
                     
         return detected
     
-    def detect_career_milestone(self, text: str) -> str:
-        """Detect if user is discussing a career milestone"""
+    def detect_career_milestone(self, text: str) -> Optional[str]:
+       
         text = text.lower()
         
         for milestone in self.career_milestones:
@@ -81,7 +76,7 @@ class InclusivityEmpathyService:
         
     def enhance_empathy(self, response: str, emotion: str = None, 
                          milestone: str = None, cultural_contexts: List[str] = None) -> str:
-        """Enhance response with appropriate empathetic elements"""
+       
         
         empathy_phrases = {
             'frustration': [
@@ -127,17 +122,14 @@ class InclusivityEmpathyService:
         }
         
         enhanced = response
-        
-        # Add empathy phrase if emotion detected
+  
         if emotion and emotion in empathy_phrases:
             phrases = empathy_phrases[emotion]
             enhanced = f"{phrases[0]} {enhanced}"
-        
-        # Add milestone-specific guidance
+ 
         if milestone and milestone in milestone_phrases:
             enhanced = f"{enhanced}\n\n{milestone_phrases[milestone]}"
-            
-        # Add culturally relevant information
+ 
         if cultural_contexts:
             for context in cultural_contexts:
                 if context in cultural_phrases and cultural_phrases[context]:
@@ -146,7 +138,6 @@ class InclusivityEmpathyService:
         return enhanced
     
     def make_language_inclusive(self, text: str) -> str:
-        """Replace non-inclusive language with inclusive alternatives"""
         result = text
         
         for pattern, replacements in self.inclusive_swaps.items():
@@ -158,15 +149,10 @@ class InclusivityEmpathyService:
         return result
     
     def process_response(self, user_prompt: str, response: str) -> str:
-        """Process a response to add inclusivity and empathy"""
         emotion, conf = self.detect_emotion(user_prompt)
         milestone = self.detect_career_milestone(user_prompt)
-        cultural_contexts = self.detect_cultural_context(user_prompt)
-        
-        # First make language inclusive
+        cultural_contexts = self.detect_cultural_context(user_prompt) 
         inclusive_response = self.make_language_inclusive(response)
-        
-        # Then enhance with empathy
         enhanced_response = self.enhance_empathy(
             inclusive_response, 
             emotion=emotion if conf > 0.7 else None,

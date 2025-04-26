@@ -4,10 +4,8 @@ import random
 from typing import List, Dict, Tuple
 
 class HumanAwareService:
-    """Makes AI responses sound more natural and human-aware"""
     
     def __init__(self):
-        # Natural speech patterns
         self.speech_patterns = {
             'interjections': [
                 "Hey", "Actually", "You know what", "Look", "I think", 
@@ -64,8 +62,6 @@ class HumanAwareService:
                 "as I was saying", "where was I", "as I mentioned"
             ]
         }
-        
-        # Conversational acknowledgers
         self.acknowledgers = [
             "I get what you're saying about {topic}.",
             "I hear you on the {topic} front.",
@@ -74,8 +70,6 @@ class HumanAwareService:
             "You've got a good perspective on {topic}.",
             "I see where you're coming from with {topic}."
         ]
-        
-        # Personal anecdote frames
         self.anecdote_frames = [
             "I've worked with someone who {situation}.",
             "One of my contacts in the industry {situation}.",
@@ -83,10 +77,9 @@ class HumanAwareService:
             "There was a case where {situation}.",
             "Many people I've spoken with have {situation}."
         ]
-        
-        # Situation-specific anecdotes (career focused)
+        JOB_SEARCH = "job search"
         self.anecdotes = {
-            "job search": [
+            JOB_SEARCH: [
                 "spent months applying before landing their dream role",
                 "completely changed their resume format and saw immediate results",
                 "found their best opportunities through networking rather than job boards"
@@ -107,8 +100,6 @@ class HumanAwareService:
                 "started with freelance projects to build a portfolio in their new field"
             ]
         }
-        
-        # Response variants for common questions
         self.response_variants = {
             "greeting": [
                 "Hey there! How can I help with your career today?",
@@ -132,9 +123,6 @@ class HumanAwareService:
         }
     
     def extract_topics(self, text: str) -> List[str]:
-        """Simple topic extraction using common nouns in the text"""
-        # In a real implementation, this would use proper NLP
-        # This is a simplified version
         words = text.lower().split()
         career_topics = [
             "resume", "interview", "job", "career", "skills", 
@@ -149,7 +137,6 @@ class HumanAwareService:
         return ["your question"]  # Default
         
     def add_contractions(self, text: str) -> str:
-        """Convert formal language to contractions"""
         result = text
         
         # Randomly apply contractions (not all at once to maintain variability)
@@ -164,54 +151,39 @@ class HumanAwareService:
             
         return result
         
-    def add_interjection(self, text: str) -> str:
-        """Add conversational interjection to the beginning"""
-        # Only add sometimes (70% chance)
+    def add_interjection(self, text: str) -> str:      
         if random.random() > 0.3:
             interjection = random.choice(self.speech_patterns['interjections'])
-            # Make sure to add proper punctuation
             return f"{interjection}, {text[0].lower()}{text[1:]}"
         return text
         
     def add_hedge(self, text: str) -> str:
-        """Add hedging language to make statement less absolute"""
         sentences = re.split(r'(?<=[.!?])\s+', text)
         if len(sentences) < 2:
             return text
-            
-        # Pick a random sentence (not first or last) to add hedge
         if len(sentences) > 2:
             idx = random.randint(1, len(sentences) - 2)
         else:
             idx = 0
-            
-        # Only add sometimes (50% chance)
         if random.random() > 0.5:
             hedge = random.choice(self.speech_patterns['hedges'])
             sentence = sentences[idx]
-            # Insert hedge at beginning of sentence
             modified = f"{sentence.split(' ')[0]} {hedge} {' '.join(sentence.split(' ')[1:])}"
             sentences[idx] = modified
             
         return ' '.join(sentences)
         
     def add_filler(self, text: str) -> str:
-        """Add filler words to make text sound more natural"""
-        # Only add sometimes (30% chance)
         if random.random() > 0.7:
             sentences = re.split(r'(?<=[.!?])\s+', text)
             if len(sentences) < 2:
                 return text
-                
-            # Pick a random sentence to add filler
             idx = random.randint(0, len(sentences) - 1)
             filler = random.choice(self.speech_patterns['fillers'])
             
             words = sentences[idx].split()
             if len(words) < 4:
                 return text
-                
-            # Insert filler at a natural position (after 2-5 words)
             insert_pos = random.randint(2, min(5, len(words) - 1))
             words.insert(insert_pos, filler)
             sentences[idx] = ' '.join(words)
@@ -220,38 +192,33 @@ class HumanAwareService:
         return text
         
     def add_discourse_marker(self, text: str) -> str:
-        """Add discourse markers between paragraphs"""
+       
         paragraphs = text.split('\n\n')
         if len(paragraphs) < 2:
             return text
             
-        # Pick a random paragraph (not first) to add marker at beginning
+       
         idx = random.randint(1, len(paragraphs) - 1)
         marker = random.choice(self.speech_patterns['discourse_markers'])
         
-        # Add marker to beginning of paragraph
+        
         paragraphs[idx] = f"{marker.capitalize()}, {paragraphs[idx][0].lower()}{paragraphs[idx][1:]}"
         
         return '\n\n'.join(paragraphs)
         
     def add_acknowledgment(self, text: str, user_prompt: str) -> str:
-        """Add an acknowledgment of the user's perspective"""
-        # Only add sometimes (60% chance)
         if random.random() > 0.4:
             topics = self.extract_topics(user_prompt)
             if topics:
                 topic = random.choice(topics)
                 acknowledgment = random.choice(self.acknowledgers).format(topic=topic)
                 
-                # Add at beginning of response
+              
                 return f"{acknowledgment} {text}"
         return text
         
     def add_anecdote(self, text: str, user_prompt: str) -> str:
-        """Add a relevant anecdote or example"""
-        # Only add sometimes (40% chance)
-        if random.random() > 0.6:
-            # Identify relevant situation
+            JOB_SEARCH: [JOB_SEARCH, "looking for", "application", "resume", "CV", "apply"],
             situation_keywords = {
                 "job search": ["job search", "looking for", "application", "resume", "CV", "apply"],
                 "interview": ["interview", "hiring", "meeting", "question"],
@@ -269,33 +236,25 @@ class HumanAwareService:
                 anecdote_frame = random.choice(self.anecdote_frames)
                 anecdote_content = random.choice(self.anecdotes[detected_situation])
                 anecdote = anecdote_frame.format(situation=anecdote_content)
-                
-                # Add to the appropriate location in text
                 paragraphs = text.split('\n\n')
                 if len(paragraphs) > 1:
-                    # Insert after first paragraph
                     paragraphs.insert(1, anecdote)
                     return '\n\n'.join(paragraphs)
                 else:
-                    # Add to end if only one paragraph
                     return f"{text}\n\n{anecdote}"
         return text
         
     def get_response_variant(self, variant_type: str) -> str:
-        """Get a random variant for common responses"""
         if variant_type in self.response_variants:
             return random.choice(self.response_variants[variant_type])
         return ""
         
     def humanize(self, response: str, user_prompt: str) -> str:
-        """Apply a series of transformations to make text more human-like"""
-        # Skip transformation for extremely short responses
+
         if len(response) < 30:
             return response
             
         result = response
-        
-        # Apply transformations that maintain meaning but sound more natural
         result = self.add_contractions(result)
         result = self.add_interjection(result)
         result = self.add_hedge(result)

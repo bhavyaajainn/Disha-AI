@@ -9,7 +9,6 @@ from botocore.exceptions import ClientError
 load_dotenv()
 
 def ask_bedrock(messages: list) -> dict:
-    print("🚀 ask_bedrock() called with", len(messages), "messages")
 
     region = os.getenv("AWS_REGION")
     account_id = os.getenv("AWS_ACCOUNT_ID")

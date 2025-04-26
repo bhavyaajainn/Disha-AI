@@ -5,7 +5,8 @@ from langchain.tools import tool
 @tool("mentorship_tool", return_direct=True)
 def mentorship_tool(query: str = "") -> str:
     """
-    Fetches a list of mentorship programs from a local JSON file and optionally filters them based on a query.
+    This function provides mentorship-related tools or services.
+    Add more details about what the function does here.
     """
     json_path = os.path.join(os.path.dirname(__file__), "../../data/mentorship_links.json")
 
@@ -28,7 +29,6 @@ def mentorship_tool(query: str = "") -> str:
         
         data = filtered
 
-    # Add a clear header and make the links more prominent
     header = "👩‍🏫 **Mentorship Programs and Resources**\n\n"
     footer = "\n\n💡 Click on the links above to access these mentorship opportunities and accelerate your career growth."
     

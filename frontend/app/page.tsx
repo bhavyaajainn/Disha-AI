@@ -1,5 +1,3 @@
-// frontend/app/page.tsx
-
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
@@ -49,8 +47,6 @@ function Home() {
   const [isTypingComplete, setIsTypingComplete] = useState<boolean>(false);
   const fullTaglineText = "Lead at every step with smart support.";
   const router = useRouter();
-
-  // Auth related states
   const [tabValue, setTabValue] = useState<number>(0);
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
@@ -60,15 +56,11 @@ function Home() {
   const [guestLoading, setGuestLoading] = useState<boolean>(false); // New loading state for guest login
   const [keepSignedIn, setKeepSignedIn] = useState<boolean>(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-
-  // Toast notification state
   const [toast, setToast] = useState<ToastState>({
     open: false,
     message: "",
     severity: "info",
   });
-
-  // Password visibility states
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] =
     useState<boolean>(false);
@@ -240,7 +232,6 @@ function Home() {
   return (
     <Container className="landing-page">
       <LandingPageBackground />
-      {/* Toast Notification */}
       <Snackbar
         open={toast.open}
         autoHideDuration={6000}
@@ -280,21 +271,17 @@ function Home() {
                 </Typography>
               </div>
             </div>
-
-            {/* Image Content */}
             <div className="image-container">
               <Image
                 src="/women-with-wings.png"
                 alt="Woman with wings"
                 className="responsive-image"
-                width={150} // Specify the width
-                height={150} // Specify the height
-                priority // Ensures the image is loaded quickly
+                width={150}
+                height={150} 
+                priority 
               />
             </div>
           </div>
-
-          {/* Authentication Section - Directly integrated in main page */}
           <Box className="auth-section">
             <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
               <Tabs
@@ -311,8 +298,6 @@ function Home() {
                 <Tab label="Sign Up" />
               </Tabs>
             </Box>
-
-            {/* Sign In Form */}
             {tabValue === 0 && (
               <Box component="form" onSubmit={handleSignIn} sx={{ mt: 2 }}>
                 <TextField
@@ -393,8 +378,6 @@ function Home() {
                     },
                   }}
                 />
-
-                {/* Keep me signed in checkbox - only shown on sign in form */}
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -437,8 +420,6 @@ function Home() {
                 >
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
-                
-                {/* Guest access section */}
                 <Divider sx={{ mt: 2, mb: 2, bgcolor: "rgba(255, 255, 255, 0.2)" }} />
                 
                 <Typography variant="body2" sx={{ textAlign: "center", color: "rgba(255, 255, 255, 0.7)", mb: 2 }}>
@@ -471,8 +452,6 @@ function Home() {
                 </Typography>
               </Box>
             )}
-
-            {/* Sign Up Form */}
             {tabValue === 1 && (
               <Box component="form" onSubmit={handleSignUp} sx={{ mt: 2 }}>
                 <TextField
@@ -649,8 +628,6 @@ function Home() {
                 >
                   {loading ? "Creating account..." : "Create Account"}
                 </Button>
-                
-                {/* Guest access section */}
                 <Divider sx={{ mt: 2, mb: 2, bgcolor: "rgba(255, 255, 255, 0.2)" }} />
                 
                 <Typography variant="body2" sx={{ textAlign: "center", color: "rgba(255, 255, 255, 0.7)", mb: 2 }}>

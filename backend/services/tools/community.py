@@ -5,7 +5,8 @@ from langchain.tools import tool
 @tool("community_tool", return_direct=True)
 def community_tool(query: str = "") -> str:
     """
-    Returns a list of community platforms from a local JSON file.
+    This function searches for tech communities and networks based on the query.
+    It retrieves data from a JSON file and filters the results by the query.
     """
     json_path = os.path.join(os.path.dirname(__file__), "../../data/community_links.json")
     

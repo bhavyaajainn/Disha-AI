@@ -1,5 +1,3 @@
-// frontend/app/utils/helper.tsx
-
 import { Dispatch, SetStateAction } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { FormErrors } from "@/types";
@@ -95,13 +93,11 @@ export const handleSessionCheck = async (
     const guestSession = localStorage.getItem("dishaGuestSession");
     if (guestSession) {
       const guestData = JSON.parse(guestSession);
-      if (guestData && guestData.name) {
+      if (guestData?.name) {
         router.push(`/chat?name=${encodeURIComponent(guestData.name)}&guest=true`);
         return;
       }
     }
-
-    // Then check for regular authenticated session
     const keepSignedInPref = localStorage.getItem("dishaKeepSignedIn");
     if (keepSignedInPref === "true") {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -203,7 +199,6 @@ export const handleGuestLogin = async (
   router: AppRouterInstance
 ): Promise<void> => {
   try {
-    // Generate a random name for the guest
     const guestNames = [
       "Guest Explorer", 
       "Curious Visitor", 
@@ -212,22 +207,14 @@ export const handleGuestLogin = async (
       "Learning Seeker"
     ];
     const randomName = guestNames[Math.floor(Math.random() * guestNames.length)];
-    
-    // Create a guest session with a random UUID
     const guestSession = {
       id: uuidv4(),
       name: randomName,
       timestamp: new Date().toISOString(),
       isGuest: true
     };
-    
-    // Store the guest session in local storage
     localStorage.setItem("dishaGuestSession", JSON.stringify(guestSession));
-    
-    // Clear any existing auth session
     localStorage.removeItem("dishaKeepSignedIn");
-    
-    // Redirect to chat with the guest name
     router.push(`/chat?name=${encodeURIComponent(randomName)}&guest=true`);
   } catch (error) {
     console.error("Error creating guest session:", error);

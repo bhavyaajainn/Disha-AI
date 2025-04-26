@@ -10,7 +10,8 @@ TIMEOUT = 15
 @tool("remote_job_tool", return_direct=True)
 def remote_job_tool(query: str = "") -> str:
     """
-    Fetch jobs from multiple global and Indian public job APIs in parallel.
+    This function handles remote job-related tasks.
+    Add more details about what the function does here.
     """
     query = sanitize_query(query)
     encoded_query = urllib.parse.quote(query)
@@ -25,7 +26,6 @@ def remote_job_tool(query: str = "") -> str:
     elif not results:
         results.append(f"⚠️ No jobs found for '{query}'")
 
-    # Add a clear header and make the links more prominent
     header = f"🔍 **Job Search Results for: '{query}'**\n\n"
     footer = "\n\n📱 Click on the application links above to apply directly on the company websites."
     
@@ -33,18 +33,12 @@ def remote_job_tool(query: str = "") -> str:
 
 
 def sanitize_query(query):
-    """
-    Sanitize the input query.
-    """
     if isinstance(query, list):
         query = query[0] if query else ""
     return str(query).strip().strip("'").strip('"')
 
 
 def fetch_jobs_in_parallel(encoded_query):
-    """
-    Fetch jobs from multiple APIs in parallel.
-    """
     results = []
     all_jobs = []
 
@@ -66,9 +60,6 @@ def fetch_jobs_in_parallel(encoded_query):
 
 
 def fetch_from_remotive(encoded_query, all_jobs):
-    """
-    Fetch jobs from Remotive API.
-    """
     try:
         res = requests.get(f"https://remotive.com/api/remote-jobs?search={encoded_query}", timeout=TIMEOUT)
         if res.status_code != 200:
@@ -90,9 +81,6 @@ def fetch_from_remotive(encoded_query, all_jobs):
 
 
 def fetch_from_remoteok(encoded_query, all_jobs):
-    """
-    Fetch jobs from RemoteOK API.
-    """
     try:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -132,9 +120,6 @@ def fetch_from_remoteok(encoded_query, all_jobs):
 
 
 def fetch_from_indianapi(encoded_query, all_jobs):
-    """
-    Fetch jobs from ArbeitNow API.
-    """
     try:
         res = requests.get(f"https://www.arbeitnow.com/api/job-board-api?search={encoded_query}", timeout=TIMEOUT)
         if res.status_code != 200:
@@ -156,9 +141,6 @@ def fetch_from_indianapi(encoded_query, all_jobs):
 
 
 def get_apply_link_by_company(company_name: str) -> str:
-    """
-    Returns the apply link for a previously fetched job from a given company name.
-    """
     try:
         for job in last_fetched_jobs:
             # Check different fields that might contain company name
@@ -174,5 +156,4 @@ def get_apply_link_by_company(company_name: str) -> str:
     except NameError:
         return "No jobs have been fetched yet. Please run the remote_job_tool first."
 
-# Initialize last_fetched_jobs global variable
 last_fetched_jobs = []

@@ -1,4 +1,3 @@
-# services/rag_system.py
 import os
 import json
 import hashlib
@@ -7,8 +6,7 @@ from typing import Dict, List, Tuple, Optional, Any
 import re
 
 class DocumentStore:
-    """Simple in-memory document store for career resources and knowledge"""
-    
+  
     def __init__(self, data_dir: str = None):
         self.documents = {}
         self.embeddings = {}
@@ -16,12 +14,9 @@ class DocumentStore:
         self.load_documents()
         
     def load_documents(self):
-        """Load documents from JSON files in data directory"""
-        # Load career-specific resources
         resource_files = [
             "community_links.json", 
             "mentorship_links.json",
-            # Add more resource files as needed
         ]
         
         for filename in resource_files:
@@ -30,12 +25,9 @@ class DocumentStore:
                 try:
                     with open(file_path, 'r') as f:
                         data = json.load(f)
-                        
-                    # Process each resource as a separate document
                     for item in data:
                         doc_id = self._generate_id(str(item))
-                        
-                        # Combine fields into searchable text
+
                         content = f"{item.get('title', '')} - {item.get('description', '')}"
                         
                         self.documents[doc_id] = {
@@ -45,15 +37,9 @@ class DocumentStore:
                         }
                 except Exception as e:
                     print(f"Error loading {filename}: {e}")
-                    
-        # Load knowledge base articles (Career FAQs, guides, etc.)
         self._load_knowledge_base()
     
     def _load_knowledge_base(self):
-        """Load knowledge base articles"""
-        # In production, this would load from a database or CMS
-        # For this example, we'll add some hardcoded career knowledge
-        
         knowledge_articles = [
             {
                 "title": "Resume Best Practices",
@@ -133,37 +119,14 @@ class DocumentStore:
             }
     
     def _generate_id(self, text: str) -> str:
-        """Generate a unique ID for a document"""
         return hashlib.md5(text.encode('utf-8')).hexdigest()
     
     def simple_search(self, query: str, top_k: int = 3) -> List[Dict]:
-        """
-        Simple keyword-based search without vector embeddings
-        In a production system, this would use proper embeddings
-        """
         query_terms = set(query.lower().split())
         results = []
-        
+
         for doc_id, doc in self.documents.items():
-            content = doc['content'].lower()
-            metadata = doc.get('metadata', {})
-            
-            # Calculate simple relevance score
-            score = 0
-            for term in query_terms:
-                if term in content:
-                    score += content.count(term)
-            
-            # Boost score based on metadata matches
-            if metadata:
-                for key, value in metadata.items():
-                    if isinstance(value, str) and any(term in value.lower() for term in query_terms):
-                        score += 2
-                    elif isinstance(value, list):
-                        for item in value:
-                            if isinstance(item, str) and any(term in item.lower() for term in query_terms):
-                                score += 2
-            
+            score = self._calculate_relevance_score(doc, query_terms)
             if score > 0:
                 results.append({
                     'id': doc_id,
@@ -172,21 +135,48 @@ class DocumentStore:
                     'score': score,
                     'source': doc.get('source', 'unknown')
                 })
-        
-        # Sort by relevance score and return top K
+
         results.sort(key=lambda x: x['score'], reverse=True)
         return results[:top_k]
 
+    def _calculate_relevance_score(self, doc: Dict, query_terms: set) -> int:
+        content = doc['content'].lower()
+        metadata = doc.get('metadata', {})
+        score = self._calculate_content_score(content, query_terms)
+        score += self._boost_metadata_score(metadata, query_terms)
+        return score
+
+    def _calculate_content_score(self, content: str, query_terms: set) -> int:
+        return sum(content.count(term) for term in query_terms if term in content)
+
+    def _boost_metadata_score(self, metadata: Dict, query_terms: set) -> int:
+        score = 0
+        if metadata:
+            for key, value in metadata.items():
+                score += self._calculate_string_score(value, query_terms)
+                score += self._calculate_list_score(value, query_terms)
+        return score
+
+    def _calculate_string_score(self, value: Any, query_terms: set) -> int:
+        if isinstance(value, str) and any(term in value.lower() for term in query_terms):
+            return 2
+        return 0
+
+    def _calculate_list_score(self, value: Any, query_terms: set) -> int:
+        score = 0
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, str) and any(term in item.lower() for term in query_terms):
+                    score += 2
+        return score
+
 
 class RAGSystem:
-    """Retrieval Augmented Generation system for Disha AI"""
-    
     def __init__(self):
         self.document_store = DocumentStore()
-        self.feedback_cache = {}  # For SHAG implementation
+        self.feedback_cache = {}  
         
     def generate_context(self, query: str) -> str:
-        """Generate context for the language model based on retrieved documents"""
         results = self.document_store.simple_search(query)
         
         if not results:
@@ -196,8 +186,6 @@ class RAGSystem:
         for result in results:
             source = result.get('source', 'knowledge')
             metadata = result.get('metadata', {})
-            
-            # Format based on source type
             if source == 'community_links' or source == 'mentorship_links':
                 context_parts.append(
                     f"RESOURCE: {metadata.get('title', 'Resource')}\n"
@@ -213,13 +201,10 @@ class RAGSystem:
         return "\n".join(context_parts)
     
     def create_augmented_prompt(self, user_query: str) -> str:
-        """Create a prompt augmented with relevant context"""
         context = self.generate_context(user_query)
         
         if not context:
             return user_query
-        
-        # Structured prompt with retrieved context
         return (
             f"User query: {user_query}\n\n"
             f"Here is some relevant information to help craft your response:\n"
@@ -228,11 +213,6 @@ class RAGSystem:
         )
     
     def detect_hallucination(self, response: str) -> bool:
-        """
-        Detect potential hallucinations in response
-        This is a simplified version - production would be more sophisticated
-        """
-        # Check for markers of uncertainty
         uncertainty_phrases = [
             "I'm not sure", "I don't know", "I think", "probably",
             "might be", "could be", "may be", "possibly", "perhaps",
@@ -240,8 +220,6 @@ class RAGSystem:
         ]
         
         has_uncertainty = any(phrase in response.lower() for phrase in uncertainty_phrases)
-        
-        # Check for specific claims without sources
         claim_patterns = [
             r"according to research",
             r"studies show",
@@ -256,7 +234,6 @@ class RAGSystem:
         return has_uncertainty or has_unsourced_claims
     
     def collect_feedback(self, query: str, response: str, is_positive: bool) -> None:
-        """Collect user feedback for SHAG implementation"""
         feedback_id = hashlib.md5(f"{query}:{response}".encode('utf-8')).hexdigest()
         
         self.feedback_cache[feedback_id] = {
@@ -265,46 +242,20 @@ class RAGSystem:
             'is_positive': is_positive,
             'timestamp': time.time()
         }
-        
-        # In production, this would store to a database for training
     
     def self_heal(self, query: str, original_response: str) -> Optional[str]:
-        """
-        Attempt to self-heal a problematic response
-        Returns improved response or None if no improvement needed
-        """
         is_hallucination = self.detect_hallucination(original_response)
         
         if not is_hallucination:
             return None
-            
-        # Get more specific context for self-healing
         context = self.generate_context(query)
         if not context:
-            # No additional context available for healing
-            # Return a more cautious response
             return (
                 "I want to be careful about providing accurate information. "
                 "While I don't have specific details about that in my knowledge base, "
                 "I can help you find reliable resources or focus on general best practices in this area. "
                 "Would you like me to help with that instead?"
             )
-        
-        # Create a self-healing prompt
-        healing_prompt = (
-            f"Original query: {query}\n\n"
-            f"My previous response may have contained information that wasn't fully supported by my knowledge. "
-            f"Here is the most reliable information I have on this topic:\n\n"
-            f"{context}\n\n"
-            f"Based strictly on this information, I should provide a more accurate response that:"
-            f"1. Only includes facts I can verify from the above information"
-            f"2. Clearly acknowledges any limitations in my knowledge"
-            f"3. Focuses on being helpful while remaining accurate"
-            f"4. Avoids speculative claims"
-        )
-        
-        # In a real system, this would pass to the LLM for regeneration
-        # For this example, we'll return the healing prompt as placeholder
         return "I need to clarify my previous response based on more accurate information. " + context
     
     def process_query(self, query: str) -> Tuple[str, bool]:
@@ -314,8 +265,5 @@ class RAGSystem:
         """
         augmented_prompt = self.create_augmented_prompt(query)
         needs_healing = False
-        
-        # This would be expanded in a real implementation
-        # to include full healing process after initial response
         
         return augmented_prompt, needs_healing

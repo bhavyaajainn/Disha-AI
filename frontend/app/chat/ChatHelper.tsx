@@ -16,7 +16,7 @@ export const scrubPII = (text: string): string => {
   text = text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL REDACTED]');
   
   // Phone number patterns (various formats)
-  text = text.replace(/\b(\+\d{1,3}[\s-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g, '[PHONE REDACTED]');
+  text = text.replace(/\b\+?\d{1,3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g, '[PHONE REDACTED]');
   
   // Social security / ID number patterns
   text = text.replace(/\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/g, '[ID REDACTED]');
@@ -28,13 +28,13 @@ export const scrubPII = (text: string): string => {
   text = text.replace(/\b\d+\s+[A-Za-z0-9\s,]+(?:Avenue|Ave|Street|St|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Plaza|Square|Sq|Trail|Tr|Parkway|Pkwy|Circle|Cir)\b/g, '[ADDRESS REDACTED]');
   
   // WhatsApp/Telegram number patterns
-  text = text.replace(/\b(?:whatsapp|telegram|signal|viber)(?:\s+at)?\s+[+]?[0-9][0-9\s-]{7,}/g, '[CONTACT REDACTED]');
+  text = text.replace(/\b(?:whatsapp|telegram|signal|viber)(?:\s+at)?\s+[+]?\d[\d\s-]{7,}/g, '[CONTACT REDACTED]');
   
   // LinkedIn profile patterns
   text = text.replace(/linkedin\.com\/in\/[a-zA-Z0-9_-]+/g, '[LINKEDIN REDACTED]');
   
   // Other social media handles
-  text = text.replace(/(?:@[a-zA-Z0-9_]{2,})/g, '[SOCIAL MEDIA HANDLE REDACTED]');
+  text = text.replace(/(?:@\w{2,})/g, '[SOCIAL MEDIA HANDLE REDACTED]');
   
   return text;
 };
@@ -140,7 +140,7 @@ export const handleSubmitMessage = async (
     
     const userMessage: Message = {
       sender: "user",
-      text: cleanInput, // Use clean version for display
+      text: cleanInput, 
       timestamp: new Date(),
       id: Date.now().toString(),
     };
@@ -157,17 +157,11 @@ export const handleSubmitMessage = async (
 
     try {
       let aiReply;
-
-      // Check for premium feature requests when in guest mode
       if (isGuest && containsPremiumRequest(input)) {
         aiReply = generateGuestLimitationResponse();
       } else {
-        // For non-premium requests or authenticated users, use the regular API
-        // Note: We send the original input to the API, which will do its own PII scrubbing
         aiReply = await sendToDisha(input, isGuest, userId);
       }
-
-      // No need to scrub AI reply as it should already be scrubbed by the backend
       const aiMessage: Message = {
         sender: "ai",
         text: aiReply,
@@ -258,14 +252,10 @@ export const handleFeedbackSubmission = async ({
     if (!feedbackMessage) {
       throw new Error("Message not found");
     }
-
-    // Scrub any PII from the feedback text
     const cleanFeedbackText = scrubPII(feedbackText);
-    
-    // Also scrub message content just to be safe
+
     const cleanMessageContent = scrubPII(feedbackMessage.text);
 
-    // Only store feedback in the database for authenticated users
     if (!isGuest) {
       let currentUserId: string | null = userId;
       
@@ -296,14 +286,11 @@ export const handleFeedbackSubmission = async ({
         }
       }
     } else {
-      // For guest users, just log feedback to console but don't store in database
       console.log("Guest user feedback received (not stored):", {
         feedback_text: cleanFeedbackText,
         message_content: cleanMessageContent
       });
     }
-
-    // Update UI state for both guest and authenticated users
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>
         msg.id === currentFeedbackMessage
@@ -355,12 +342,9 @@ export const handleLogout = async (
 ) => {
   try {
     if (!isGuest) {
-      // Regular user logout
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     }
-    
-    // Clear all relevant storage for both guest and regular users
     localStorage.removeItem("dishaKeepSignedIn");
     localStorage.removeItem("dishaGuestSession");
     localStorage.removeItem("sb-fictrvuyjpkcpwlbfvbd-auth-token");
