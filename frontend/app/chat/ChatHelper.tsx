@@ -6,6 +6,40 @@ import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.share
 import ReactMarkdown from "react-markdown";
 
 /**
+ * Scrubs personally identifiable information (PII) from text
+ * 
+ * @param text Text to be scrubbed of PII
+ * @returns Text with PII redacted
+ */
+export const scrubPII = (text: string): string => {
+  // Email pattern
+  text = text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL REDACTED]');
+  
+  // Phone number patterns (various formats)
+  text = text.replace(/\b(\+\d{1,3}[\s-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/g, '[PHONE REDACTED]');
+  
+  // Social security / ID number patterns
+  text = text.replace(/\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/g, '[ID REDACTED]');
+  
+  // URLs with potential user IDs
+  text = text.replace(/https?:\/\/[^\s/]+\/(?:user|profile|account|u)\/[a-zA-Z0-9_-]+/g, '[URL REDACTED]');
+  
+  // Physical addresses (simplified pattern)
+  text = text.replace(/\b\d+\s+[A-Za-z0-9\s,]+(?:Avenue|Ave|Street|St|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Plaza|Square|Sq|Trail|Tr|Parkway|Pkwy|Circle|Cir)\b/g, '[ADDRESS REDACTED]');
+  
+  // WhatsApp/Telegram number patterns
+  text = text.replace(/\b(?:whatsapp|telegram|signal|viber)(?:\s+at)?\s+[+]?[0-9][0-9\s-]{7,}/g, '[CONTACT REDACTED]');
+  
+  // LinkedIn profile patterns
+  text = text.replace(/linkedin\.com\/in\/[a-zA-Z0-9_-]+/g, '[LINKEDIN REDACTED]');
+  
+  // Other social media handles
+  text = text.replace(/(?:@[a-zA-Z0-9_]{2,})/g, '[SOCIAL MEDIA HANDLE REDACTED]');
+  
+  return text;
+};
+
+/**
  * Handles quick response options displayed as chips
  * Provides tailored responses for different support categories
  */
@@ -101,9 +135,12 @@ export const handleSubmitMessage = async (
   userId: string | null = null
 ) => {
   if (input.trim()) {
+    // Scrub any PII from user input before displaying in UI
+    const cleanInput = scrubPII(input);
+    
     const userMessage: Message = {
       sender: "user",
-      text: input,
+      text: cleanInput, // Use clean version for display
       timestamp: new Date(),
       id: Date.now().toString(),
     };
@@ -126,9 +163,11 @@ export const handleSubmitMessage = async (
         aiReply = generateGuestLimitationResponse();
       } else {
         // For non-premium requests or authenticated users, use the regular API
+        // Note: We send the original input to the API, which will do its own PII scrubbing
         aiReply = await sendToDisha(input, isGuest, userId);
       }
 
+      // No need to scrub AI reply as it should already be scrubbed by the backend
       const aiMessage: Message = {
         sender: "ai",
         text: aiReply,
@@ -189,6 +228,7 @@ const generateGuestLimitationResponse = (): string => {
 /**
  * Processes user feedback on AI responses
  * For guest users, doesn't store feedback in the database
+ * Scrubs any PII from feedback content
  */
 export const handleFeedbackSubmission = async ({
   feedbackText,
@@ -219,6 +259,12 @@ export const handleFeedbackSubmission = async ({
       throw new Error("Message not found");
     }
 
+    // Scrub any PII from the feedback text
+    const cleanFeedbackText = scrubPII(feedbackText);
+    
+    // Also scrub message content just to be safe
+    const cleanMessageContent = scrubPII(feedbackMessage.text);
+
     // Only store feedback in the database for authenticated users
     if (!isGuest) {
       let currentUserId: string | null = userId;
@@ -237,8 +283,8 @@ export const handleFeedbackSubmission = async ({
       if (currentUserId) {
         const feedbackRecord = {
           user_id: currentUserId, 
-          feedback_text: feedbackText,
-          message_content: feedbackMessage.text
+          feedback_text: cleanFeedbackText,
+          message_content: cleanMessageContent
         };
 
         const { error } = await supabase
@@ -252,8 +298,8 @@ export const handleFeedbackSubmission = async ({
     } else {
       // For guest users, just log feedback to console but don't store in database
       console.log("Guest user feedback received (not stored):", {
-        feedback_text: feedbackText,
-        message_content: feedbackMessage.text
+        feedback_text: cleanFeedbackText,
+        message_content: cleanMessageContent
       });
     }
 
@@ -280,13 +326,17 @@ export const handleFeedbackSubmission = async ({
 
 /**
  * Utility function to copy text to clipboard
+ * Ensures no PII data is copied
  */
 export const copyToClipboard = (
   text: string,
   setSnackbarMessage: Dispatch<SetStateAction<string>>,
   setSnackbarOpen: Dispatch<SetStateAction<boolean>>
 ) => {
-  navigator.clipboard.writeText(text).then(() => {
+  // Scrub any PII before copying to clipboard
+  const cleanText = scrubPII(text);
+  
+  navigator.clipboard.writeText(cleanText).then(() => {
     setSnackbarMessage("Text copied to clipboard");
     setSnackbarOpen(true);
   });
@@ -360,7 +410,12 @@ export const getRandomLoadingMessage = () => {
     return loadingMessages[randomIndex];
   };
   
-  /** The renderMessageText function processes and formats a given text string, applying specific replacements to enhance readability (e.g., adding line breaks before bullet points). It then renders the processed text as Markdown using the ReactMarkdown component, with custom styling for list items and paragraphs.**/
+  /** 
+   * The renderMessageText function processes and formats a given text string, 
+   * applying specific replacements to enhance readability (e.g., adding line breaks before bullet points). 
+   * It then renders the processed text as Markdown using the ReactMarkdown component, 
+   * with custom styling for list items and paragraphs.
+   */
   export const renderMessageText = (text: string) => {
     let processedText = text;
     processedText = processedText.replace(/([.!?])\s+•\s+/g, '$1\n\n• '); 

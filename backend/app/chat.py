@@ -108,6 +108,42 @@ def is_career_related(text: str) -> bool:
     # Default to false if doesn't match any condition
     return False
 
+def scrub_pii(text: str) -> str:
+    """
+    Remove personally identifiable information from text.
+    
+    This function detects and redacts:
+    - Email addresses
+    - Phone numbers in various formats
+    - Potential identification numbers
+    - URLs containing personal identifiers
+    """
+    # Email pattern
+    text = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '[EMAIL REDACTED]', text)
+    
+    # Phone number patterns (various formats)
+    text = re.sub(r'\b(\+\d{1,3}[\s-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b', '[PHONE REDACTED]', text)
+    
+    # Social security / ID number patterns
+    text = re.sub(r'\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b', '[ID REDACTED]', text)
+    
+    # URLs with potential user IDs
+    text = re.sub(r'https?://[^\s/]+/(?:user|profile|account|u)/[a-zA-Z0-9_-]+', '[URL REDACTED]', text)
+    
+    # Physical addresses (simplified pattern)
+    text = re.sub(r'\b\d+\s+[A-Za-z0-9\s,]+(?:Avenue|Ave|Street|St|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Plaza|Square|Sq|Trail|Tr|Parkway|Pkwy|Circle|Cir)\b', '[ADDRESS REDACTED]', text)
+    
+    # WhatsApp/Telegram number patterns
+    text = re.sub(r'\b(?:whatsapp|telegram|signal|viber)(?:\s+at)?\s+[+]?[0-9][0-9\s-]{7,}', '[CONTACT REDACTED]', text)
+    
+    # LinkedIn profile patterns
+    text = re.sub(r'linkedin\.com/in/[a-zA-Z0-9_-]+', '[LINKEDIN REDACTED]', text)
+    
+    # Other social media handles
+    text = re.sub(r'(?:@[a-zA-Z0-9_]{2,})', '[SOCIAL MEDIA HANDLE REDACTED]', text)
+    
+    return text
+
 @router.post("/")
 async def chat_endpoint(request: Request):
     start_time = time.time()
@@ -120,8 +156,11 @@ async def chat_endpoint(request: Request):
     if not prompt:
         return {"error": "No message provided"}
     
+    # Scrub any PII from the incoming message before processing
+    clean_prompt = scrub_pii(prompt)
+    
     # Check if the message is career-related
-    if not is_career_related(prompt):
+    if not is_career_related(clean_prompt):
         return {
             "reply": (
                 "I'm designed to help with career-related questions and professional development. "
@@ -136,7 +175,7 @@ async def chat_endpoint(request: Request):
     ip_hash = hashlib.sha256(client_ip.encode()).hexdigest()
     anon_id = context_manager.get_anonymous_id(session_id, ip_hash)
     
-    current_message_biased = is_gender_biased(prompt)
+    current_message_biased = is_gender_biased(clean_prompt)
     
     if current_message_biased:
         return {
@@ -193,16 +232,16 @@ async def chat_endpoint(request: Request):
                         break
 
     # Add current message
-    messages.append({"role": "user", "content": prompt})
+    messages.append({"role": "user", "content": clean_prompt})
 
     try:
-        if any(keyword in prompt.lower() for keyword in [
+        if any(keyword in clean_prompt.lower() for keyword in [
             "job", "jobs", "opening", "hiring", "apply", "remote", "vacancy",
             "mentor", "mentorship", "career guidance", "find a mentor", "coaching",
             "community", "forum", "group", "network", "connect with others",
             "list of jobs", "active jobs", "job listings", "available positions"]):
             # Modified to pass the prompt directly without adding bias persistence
-            reply_text = ask_disha_with_tools(prompt)
+            reply_text = ask_disha_with_tools(clean_prompt)
             guardrail_intervened = False
         else:
             result = ask_bedrock(messages)
@@ -211,23 +250,26 @@ async def chat_endpoint(request: Request):
     except Exception as e:
         return {"error": str(e), "processing_time_ms": int((time.time() - start_time) * 1000)}
 
+    # Scrub any PII from the response before storing
+    clean_reply_text = scrub_pii(reply_text)
+
     # Store context data - but only for authenticated users
     if not guardrail_intervened:
         # Only store in database for authenticated (non-guest) users
         if not is_guest:
             # Store in database only for authenticated users
-            save_chat(user_id, prompt, reply_text)
+            save_chat(user_id, clean_prompt, clean_reply_text)
         
         # Store in ephemeral context manager for both user types
         # This is temporary and will expire after the configured time
         context_manager.store_context(anon_id, {
-            'prompt': prompt,
-            'response': reply_text,
+            'prompt': clean_prompt,
+            'response': clean_reply_text,
             'timestamp': datetime.now().isoformat()
         })
 
     return {
-        "reply": reply_text,
+        "reply": clean_reply_text,
         "guardrail_intervened": guardrail_intervened,
         "processing_time_ms": int((time.time() - start_time) * 1000)
     }
