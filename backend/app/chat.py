@@ -157,34 +157,42 @@ async def chat_endpoint(request: Request):
         ephemeral_context = context_manager.get_context(anon_id)
         past = fetch_chat_history(user_id, limit=5)
 
-        # Use ephemeral context first if available
-        ephemeral_messages_added = False
-        for ctx in ephemeral_context[-3:]:  # Use last 3 exchanges from ephemeral storage
+        # Use up to 3 most recent exchanges from ephemeral context
+        ephemeral_messages_added = 0
+        for ctx in ephemeral_context[-6:]:  # Check last 6 context items (3 exchanges)
             if "prompt" in ctx["context"] and "response" in ctx["context"]:
                 if ctx["context"]["response"].strip() != FALLBACK_GUARDRAIL_RESPONSE:
                     messages.append({"role": "user", "content": ctx["context"]["prompt"]})
                     messages.append({"role": "assistant", "content": ctx["context"]["response"]})
-                    ephemeral_messages_added = True
-                    break
+                    ephemeral_messages_added += 1
+                    if ephemeral_messages_added >= 3:  # Limit to 3 exchanges
+                        break
         
         # Fall back to database history if no ephemeral context
-        if not ephemeral_messages_added:
-            for h in reversed(past):
+        if ephemeral_messages_added == 0 and past:
+            # Get up to 3 most recent exchanges from database
+            for h in reversed(past[-6:]):  # Last 6 items (3 exchanges)
                 if h["response"].strip() != FALLBACK_GUARDRAIL_RESPONSE:
                     messages.append({"role": "user", "content": h["prompt"]})
                     messages.append({"role": "assistant", "content": h["response"]})
-                    break 
+                    ephemeral_messages_added += 1
+                    if ephemeral_messages_added >= 3:  # Limit to 3 exchanges
+                        break
     else:
         # For guest users, use only ephemeral context (which will expire naturally)
         # but don't load from or save to the database
         ephemeral_context = context_manager.get_context(anon_id)
-        for ctx in ephemeral_context[-3:]:
+        ephemeral_messages_added = 0
+        for ctx in ephemeral_context[-6:]:  # Check last 6 context items (3 exchanges)
             if "prompt" in ctx["context"] and "response" in ctx["context"]:
                 if ctx["context"]["response"].strip() != FALLBACK_GUARDRAIL_RESPONSE:
                     messages.append({"role": "user", "content": ctx["context"]["prompt"]})
                     messages.append({"role": "assistant", "content": ctx["context"]["response"]})
-                    break
+                    ephemeral_messages_added += 1
+                    if ephemeral_messages_added >= 3:  # Limit to 3 exchanges
+                        break
 
+    # Add current message
     messages.append({"role": "user", "content": prompt})
 
     try:
