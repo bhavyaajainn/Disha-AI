@@ -380,6 +380,7 @@ function ChatContent() {
    */
   const handleUpgradeAccount = () => {
     setSignupDialogOpen(false);
+    localStorage.removeItem("dishaGuestSession");
     router.push("/");
   };
 
