@@ -12,7 +12,8 @@ import ReactMarkdown from "react-markdown";
 export const handleChipClick = (
   option: string,
   setMessages: Dispatch<SetStateAction<Message[]>>,
-  setIsLoading: Dispatch<SetStateAction<boolean>>
+  setIsLoading: Dispatch<SetStateAction<boolean>>,
+  isGuest: boolean = false
 ) => {
   let message = "";
   switch (option) {
@@ -46,11 +47,18 @@ export const handleChipClick = (
       let aiResponseText = "";
       
       if (option === "Jobs") {
-        aiResponseText = "I see you're interested in exploring job opportunities. Can you tell me more about what you're looking for?\n\n" +
-          "• Are you actively or passively looking for a job?\n\n" +
-          "• Would you like me to search for relevant openings?\n\n" +
-          "• Or would you prefer help with learning new skills that can improve your job prospects?\n\n" +
-          "The more details you provide about your experience, skills, and career goals, the better I can assist you.";
+        aiResponseText = isGuest
+          ? "I see you're interested in exploring job opportunities. This feature provides personalized job recommendations based on your profile, skills, and career aspirations.\n\n" +
+            "As a guest user, you have access to basic job search assistance. For personalized job recommendations and our smart career path generator:\n\n" +
+            "• Create a free account to build your profile\n\n" +
+            "• Access AI-powered job matching\n\n" +
+            "• Get customized career development plans\n\n" +
+            "For now, I can still answer general questions about job searching, resume tips, or interview preparation. What would you like to know?"
+          : "I see you're interested in exploring job opportunities. Can you tell me more about what you're looking for?\n\n" +
+            "• Are you actively or passively looking for a job?\n\n" +
+            "• Would you like me to search for relevant openings?\n\n" +
+            "• Or would you prefer help with learning new skills that can improve your job prospects?\n\n" +
+            "The more details you provide about your experience, skills, and career goals, the better I can assist you.";
       } 
       else if (option === "Mentorship") {
         aiResponseText = "I'd be happy to help with mentorship resources. Please let me know what you're interested in:\n\n" +
@@ -88,7 +96,9 @@ export const handleSubmitMessage = async (
   setMessages: Dispatch<SetStateAction<Message[]>>,
   setInput: Dispatch<SetStateAction<string>>,
   setIsLoading: Dispatch<SetStateAction<boolean>>,
-  textFieldRef: RefObject<HTMLTextAreaElement>
+  textFieldRef: RefObject<HTMLTextAreaElement>,
+  isGuest: boolean = false,
+  userId: string | null = null
 ) => {
   if (input.trim()) {
     const userMessage: Message = {
@@ -109,7 +119,15 @@ export const handleSubmitMessage = async (
     setIsLoading(true);
 
     try {
-      const aiReply = await sendToDisha(input);
+      let aiReply;
+
+      // Check for premium feature requests when in guest mode
+      if (isGuest && containsPremiumRequest(input)) {
+        aiReply = generateGuestLimitationResponse();
+      } else {
+        // For non-premium requests or authenticated users, use the regular API
+        aiReply = await sendToDisha(input, isGuest, userId);
+      }
 
       const aiMessage: Message = {
         sender: "ai",
@@ -135,8 +153,42 @@ export const handleSubmitMessage = async (
 };
 
 /**
+ * Checks if the user input contains requests for premium features
+ */
+const containsPremiumRequest = (input: string): boolean => {
+  const premiumKeywords = [
+    "career path generator",
+    "career path",
+    "generate my career path",
+    "personalized career",
+    "custom roadmap",
+    "career roadmap",
+    "career progression",
+    "build my career",
+    "my career journey",
+    "personalized job match",
+    "skill assessment"
+  ];
+  
+  const lowercaseInput = input.toLowerCase();
+  return premiumKeywords.some(keyword => lowercaseInput.includes(keyword));
+};
+
+/**
+ * Generates a response for guest users trying to access premium features
+ */
+const generateGuestLimitationResponse = (): string => {
+  return "I see you're interested in our advanced career planning features. The Smart Career Path Generator and personalized career roadmap are premium features available only to registered users.\n\n" +
+    "To unlock these features:\n\n" +
+    "• Create a free account to access all of Disha AI's capabilities\n\n" +
+    "• Build your profile to receive tailored career guidance\n\n" +
+    "• Get personalized job recommendations and industry insights\n\n" +
+    "Would you like to know more about other ways I can help you with your career or professional development as a guest user?";
+};
+
+/**
  * Processes user feedback on AI responses
- * Stores feedback in database and updates UI state
+ * For guest users, doesn't store feedback in the database
  */
 export const handleFeedbackSubmission = async ({
   feedbackText,
@@ -147,6 +199,7 @@ export const handleFeedbackSubmission = async ({
   setFeedbackDialogOpen,
   setSnackbarMessage,
   setSnackbarOpen,
+  isGuest = false
 }: {
   feedbackText: string;
   currentFeedbackMessage: string | null;
@@ -156,6 +209,7 @@ export const handleFeedbackSubmission = async ({
   setFeedbackDialogOpen: Dispatch<SetStateAction<boolean>>;
   setSnackbarMessage: Dispatch<SetStateAction<string>>;
   setSnackbarOpen: Dispatch<SetStateAction<boolean>>;
+  isGuest?: boolean;
 }) => {
   if (!feedbackText.trim()) return;
 
@@ -165,31 +219,45 @@ export const handleFeedbackSubmission = async ({
       throw new Error("Message not found");
     }
 
-    let currentUserId: string | null = userId;
-    if (!currentUserId) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        currentUserId = user?.id ?? null; 
-      } catch (authError) {
-        console.warn("Could not get authenticated user:", authError);
-        currentUserId = null; 
+    // Only store feedback in the database for authenticated users
+    if (!isGuest) {
+      let currentUserId: string | null = userId;
+      
+      if (!currentUserId) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          currentUserId = user?.id ?? null; 
+        } catch (authError) {
+          console.warn("Could not get authenticated user:", authError);
+          currentUserId = null; 
+        }
       }
+
+      // Only store in database if we have a valid user ID and not a guest
+      if (currentUserId) {
+        const feedbackRecord = {
+          user_id: currentUserId, 
+          feedback_text: feedbackText,
+          message_content: feedbackMessage.text
+        };
+
+        const { error } = await supabase
+          .from('feedback')
+          .insert(feedbackRecord);
+
+        if (error) {
+          throw error;
+        }
+      }
+    } else {
+      // For guest users, just log feedback to console but don't store in database
+      console.log("Guest user feedback received (not stored):", {
+        feedback_text: feedbackText,
+        message_content: feedbackMessage.text
+      });
     }
 
-    const feedbackRecord = {
-      user_id: currentUserId, 
-      feedback_text: feedbackText,
-      message_content: feedbackMessage.text,
-    };
-
-    const { error } = await supabase
-      .from('feedback')
-      .insert(feedbackRecord);
-
-    if (error) {
-      throw error;
-    }
-
+    // Update UI state for both guest and authenticated users
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>
         msg.id === currentFeedbackMessage
@@ -199,7 +267,9 @@ export const handleFeedbackSubmission = async ({
     );
 
     setFeedbackDialogOpen(false);
-    setSnackbarMessage("Your feedback got registered with us");
+    setSnackbarMessage(isGuest 
+      ? "Thank you for your feedback" 
+      : "Your feedback got registered with us");
     setSnackbarOpen(true);
   } catch (error) {
     console.error("Error submitting feedback:", error);
@@ -230,13 +300,19 @@ export const handleLogout = async (
   setLogoutDialogOpen: Dispatch<SetStateAction<boolean>>,
   setSnackbarMessage: Dispatch<SetStateAction<string>>,
   setSnackbarOpen: Dispatch<SetStateAction<boolean>>,
-  router: AppRouterInstance
+  router: AppRouterInstance,
+  isGuest: boolean = false
 ) => {
   try {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    if (!isGuest) {
+      // Regular user logout
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    }
     
+    // Clear all relevant storage for both guest and regular users
     localStorage.removeItem("dishaKeepSignedIn");
+    localStorage.removeItem("dishaGuestSession");
     localStorage.removeItem("sb-fictrvuyjpkcpwlbfvbd-auth-token");
     
     try {
@@ -248,7 +324,8 @@ export const handleLogout = async (
             key.includes("user") || 
             key.includes("session") ||
             key.includes("logged") ||
-            key.includes("sign")
+            key.includes("sign") || 
+            key.includes("guest")
           )) {
           localStorage.removeItem(key);
         }

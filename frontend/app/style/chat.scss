@@ -560,3 +560,153 @@
     justify-content: center;
   }
 }
+// Additional styles to add to frontend/app/style/chat.scss
+
+// Guest mode styles
+.guest-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 16px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  svg {
+    margin-right: 4px;
+    font-size: 1rem;
+  }
+}
+
+.upgrade-button {
+  margin-right: 16px;
+  text-transform: none;
+  color: white;
+  border-color: white;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: white;
+  }
+  
+  svg {
+    margin-right: 4px;
+    font-size: 1rem;
+  }
+}
+
+// Premium feature promotion dialog
+.premium-feature-dialog {
+  .MuiDialogTitle-root {
+    background: linear-gradient(90deg, #7c3aed 0%, #c026d3 100%);
+    color: white;
+    padding-bottom: 24px;
+  }
+  
+  .MuiDialogContent-root {
+    padding-top: 24px;
+  }
+  
+  .feature-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    
+    svg {
+      color: #7c3aed;
+      margin-right: 16px;
+    }
+    
+    .feature-text {
+      strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+    }
+  }
+  
+  .MuiDialogActions-root {
+    padding: 16px 24px 24px;
+  }
+  
+  .create-account-button {
+    background: linear-gradient(90deg, #7c3aed 0%, #c026d3 100%);
+    
+    &:hover {
+      background: linear-gradient(90deg, #6c2aed 0%, #a016b3 100%);
+    }
+  }
+}
+
+// Premium feature notice in chat message
+.premium-feature-notice {
+  background-color: #f0e7ff;
+  border-left: 4px solid #7c3aed;
+  padding: 12px 16px;
+  margin: 16px 0;
+  border-radius: 0 8px 8px 0;
+  
+  .notice-title {
+    display: flex;
+    align-items: center;
+    color: #7c3aed;
+    font-weight: 600;
+    margin-bottom: 8px;
+    
+    svg {
+      margin-right: 8px;
+    }
+  }
+  
+  .notice-content {
+    font-size: 0.9rem;
+    color: #444;
+  }
+  
+  .upgrade-link {
+    display: inline-block;
+    margin-top: 8px;
+    color: #7c3aed;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+// Additional styles for responsive design
+@media screen and (max-width: 600px) {
+  .guest-badge {
+    span {
+      display: none;
+    }
+    
+    svg {
+      margin-right: 0;
+    }
+  }
+  
+  .upgrade-button {
+    margin-right: 8px;
+    min-width: unset;
+    padding: 6px 8px;
+    
+    span {
+      display: none;
+    }
+    
+    svg {
+      margin-right: 0;
+    }
+  }
+}

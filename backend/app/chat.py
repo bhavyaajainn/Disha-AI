@@ -115,6 +115,7 @@ async def chat_endpoint(request: Request):
     prompt = data.get("message")
     session_id = data.get("session_id", "anonymous")
     user_id = data.get("user_id", "default_user")
+    is_guest = data.get("is_guest", False)  # Get guest flag from request
 
     if not prompt:
         return {"error": "No message provided"}
@@ -148,29 +149,41 @@ async def chat_endpoint(request: Request):
             "guardrail_intervened": True
         }
 
-    # Get context from both ephemeral storage and database
-    # This allows for a smooth transition to the new system
-    ephemeral_context = context_manager.get_context(anon_id)
-    past = fetch_chat_history(user_id, limit=5)
+    # Get context differently based on user type
     messages = []
-
-    # Use ephemeral context first if available
-    ephemeral_messages_added = False
-    for ctx in ephemeral_context[-3:]:  # Use last 3 exchanges from ephemeral storage
-        if "prompt" in ctx["context"] and "response" in ctx["context"]:
-            if ctx["context"]["response"].strip() != FALLBACK_GUARDRAIL_RESPONSE:
-                messages.append({"role": "user", "content": ctx["context"]["prompt"]})
-                messages.append({"role": "assistant", "content": ctx["context"]["response"]})
-                ephemeral_messages_added = True
-                break
     
-    # Fall back to database history if no ephemeral context
-    if not ephemeral_messages_added:
-        for h in reversed(past):
-            if h["response"].strip() != FALLBACK_GUARDRAIL_RESPONSE:
-                messages.append({"role": "user", "content": h["prompt"]})
-                messages.append({"role": "assistant", "content": h["response"]})
-                break 
+    if not is_guest:
+        # For authenticated users, get context from both ephemeral storage and database
+        ephemeral_context = context_manager.get_context(anon_id)
+        past = fetch_chat_history(user_id, limit=5)
+
+        # Use ephemeral context first if available
+        ephemeral_messages_added = False
+        for ctx in ephemeral_context[-3:]:  # Use last 3 exchanges from ephemeral storage
+            if "prompt" in ctx["context"] and "response" in ctx["context"]:
+                if ctx["context"]["response"].strip() != FALLBACK_GUARDRAIL_RESPONSE:
+                    messages.append({"role": "user", "content": ctx["context"]["prompt"]})
+                    messages.append({"role": "assistant", "content": ctx["context"]["response"]})
+                    ephemeral_messages_added = True
+                    break
+        
+        # Fall back to database history if no ephemeral context
+        if not ephemeral_messages_added:
+            for h in reversed(past):
+                if h["response"].strip() != FALLBACK_GUARDRAIL_RESPONSE:
+                    messages.append({"role": "user", "content": h["prompt"]})
+                    messages.append({"role": "assistant", "content": h["response"]})
+                    break 
+    else:
+        # For guest users, use only ephemeral context (which will expire naturally)
+        # but don't load from or save to the database
+        ephemeral_context = context_manager.get_context(anon_id)
+        for ctx in ephemeral_context[-3:]:
+            if "prompt" in ctx["context"] and "response" in ctx["context"]:
+                if ctx["context"]["response"].strip() != FALLBACK_GUARDRAIL_RESPONSE:
+                    messages.append({"role": "user", "content": ctx["context"]["prompt"]})
+                    messages.append({"role": "assistant", "content": ctx["context"]["response"]})
+                    break
 
     messages.append({"role": "user", "content": prompt})
 
@@ -190,12 +203,15 @@ async def chat_endpoint(request: Request):
     except Exception as e:
         return {"error": str(e), "processing_time_ms": int((time.time() - start_time) * 1000)}
 
-    # Store context data in both systems for backward compatibility
+    # Store context data - but only for authenticated users
     if not guardrail_intervened:
-        # Store in database for backward compatibility
-        save_chat(user_id, prompt, reply_text)
+        # Only store in database for authenticated (non-guest) users
+        if not is_guest:
+            # Store in database only for authenticated users
+            save_chat(user_id, prompt, reply_text)
         
-        # Store in ephemeral context manager
+        # Store in ephemeral context manager for both user types
+        # This is temporary and will expire after the configured time
         context_manager.store_context(anon_id, {
             'prompt': prompt,
             'response': reply_text,

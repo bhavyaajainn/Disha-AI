@@ -1,7 +1,10 @@
+// frontend/app/utils/helper.tsx
+
 import { Dispatch, SetStateAction } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { FormErrors } from "@/types";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Validates email format using regex
@@ -88,6 +91,17 @@ export const handleSessionCheck = async (
   supabase: SupabaseClient
 ): Promise<void> => {
   try {
+    // Check for guest session first
+    const guestSession = localStorage.getItem("dishaGuestSession");
+    if (guestSession) {
+      const guestData = JSON.parse(guestSession);
+      if (guestData && guestData.name) {
+        router.push(`/chat?name=${encodeURIComponent(guestData.name)}&guest=true`);
+        return;
+      }
+    }
+
+    // Then check for regular authenticated session
     const keepSignedInPref = localStorage.getItem("dishaKeepSignedIn");
     if (keepSignedInPref === "true") {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -112,6 +126,7 @@ export const handleSessionCheck = async (
   } catch (error) {
     console.error("Error checking stored session:", error);
     localStorage.removeItem("dishaKeepSignedIn");
+    localStorage.removeItem("dishaGuestSession");
   }
 };
 
@@ -178,4 +193,44 @@ export const handleUserSignIn = async (
   }
 
   return { success: true, displayName };
+};
+
+/**
+ * Handles guest login process
+ * Creates a temporary guest session and redirects to chat
+ */
+export const handleGuestLogin = async (
+  router: AppRouterInstance
+): Promise<void> => {
+  try {
+    // Generate a random name for the guest
+    const guestNames = [
+      "Guest Explorer", 
+      "Curious Visitor", 
+      "New Adventurer", 
+      "Disha Friend", 
+      "Learning Seeker"
+    ];
+    const randomName = guestNames[Math.floor(Math.random() * guestNames.length)];
+    
+    // Create a guest session with a random UUID
+    const guestSession = {
+      id: uuidv4(),
+      name: randomName,
+      timestamp: new Date().toISOString(),
+      isGuest: true
+    };
+    
+    // Store the guest session in local storage
+    localStorage.setItem("dishaGuestSession", JSON.stringify(guestSession));
+    
+    // Clear any existing auth session
+    localStorage.removeItem("dishaKeepSignedIn");
+    
+    // Redirect to chat with the guest name
+    router.push(`/chat?name=${encodeURIComponent(randomName)}&guest=true`);
+  } catch (error) {
+    console.error("Error creating guest session:", error);
+    throw new Error("Failed to create guest session");
+  }
 };

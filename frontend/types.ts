@@ -1,3 +1,5 @@
+// frontend/types.ts
+
 import { AuthError, User } from "@supabase/supabase-js";
 import { ReactNode, ErrorInfo } from "react";
 
@@ -31,6 +33,7 @@ export interface CustomErrorBoundaryState {
   error: Error | null;
   errorInfo: ErrorInfo | null;
 }
+
 export interface ProtectedRouteProps {
   children: ReactNode;
 }
@@ -44,4 +47,20 @@ export interface AuthResponse {
 export interface UserResponse {
   user: User | null;
   error: AuthError | null;
+}
+
+// New types for guest mode
+
+export interface GuestSession {
+  id: string;
+  name: string;
+  timestamp: string;
+  isGuest: boolean;
+}
+
+export interface FeedbackSubmission {
+  user_id: string | null;
+  feedback_text: string;
+  message_content: string;
+  is_guest?: boolean;
 }

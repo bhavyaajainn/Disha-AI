@@ -1,3 +1,5 @@
+// frontend/app/page.tsx
+
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
@@ -17,10 +19,12 @@ import {
   Checkbox,
   Snackbar,
   Alert,
+  Divider,
 } from "@mui/material";
 import Image from "next/image";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline"; // Import for guest icon
 import { ThemeProvider } from "@mui/material/styles";
 import theme from "./theme/theme";
 import "./style/page.scss";
@@ -34,6 +38,7 @@ import {
   handleSessionCheck,
   handleUserSignUp,
   handleUserSignIn,
+  handleGuestLogin, // New function for guest login
 } from "./utils/helper";
 
 /**
@@ -52,6 +57,7 @@ function Home() {
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [guestLoading, setGuestLoading] = useState<boolean>(false); // New loading state for guest login
   const [keepSignedIn, setKeepSignedIn] = useState<boolean>(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
@@ -117,6 +123,20 @@ function Home() {
       message,
       severity,
     });
+  };
+
+  /**
+   * Guest login handler
+   */
+  const handleGuestAccess = async () => {
+    setGuestLoading(true);
+    try {
+      await handleGuestLogin(router);
+    } catch {
+      showToast("Failed to continue as guest. Please try again.", "error");
+    } finally {
+      setGuestLoading(false);
+    }
   };
 
   /**
@@ -417,6 +437,38 @@ function Home() {
                 >
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
+                
+                {/* Guest access section */}
+                <Divider sx={{ mt: 2, mb: 2, bgcolor: "rgba(255, 255, 255, 0.2)" }} />
+                
+                <Typography variant="body2" sx={{ textAlign: "center", color: "rgba(255, 255, 255, 0.7)", mb: 2 }}>
+                  Don&apos;t want to create an account?
+                </Typography>
+                
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleGuestAccess}
+                  startIcon={<PersonOutlineIcon />}
+                  disabled={guestLoading}
+                  sx={{
+                    mt: 1,
+                    mb: 2,
+                    color: "white",
+                    borderColor: "rgba(255, 255, 255, 0.5)",
+                    "&:hover": {
+                      borderColor: "white",
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    },
+                    textTransform: "none",
+                  }}
+                >
+                  {guestLoading ? "Loading..." : "Continue as Guest"}
+                </Button>
+                
+                <Typography variant="caption" sx={{ display: "block", textAlign: "center", color: "rgba(255, 255, 255, 0.5)", fontSize: "0.7rem" }}>
+                  * Some premium features are only available for registered users
+                </Typography>
               </Box>
             )}
 
@@ -597,6 +649,38 @@ function Home() {
                 >
                   {loading ? "Creating account..." : "Create Account"}
                 </Button>
+                
+                {/* Guest access section */}
+                <Divider sx={{ mt: 2, mb: 2, bgcolor: "rgba(255, 255, 255, 0.2)" }} />
+                
+                <Typography variant="body2" sx={{ textAlign: "center", color: "rgba(255, 255, 255, 0.7)", mb: 2 }}>
+                  Want to try Disha AI first?
+                </Typography>
+                
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleGuestAccess}
+                  startIcon={<PersonOutlineIcon />}
+                  disabled={guestLoading}
+                  sx={{
+                    mt: 1,
+                    mb: 2,
+                    color: "white",
+                    borderColor: "rgba(255, 255, 255, 0.5)",
+                    "&:hover": {
+                      borderColor: "white",
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    },
+                    textTransform: "none",
+                  }}
+                >
+                  {guestLoading ? "Loading..." : "Continue as Guest"}
+                </Button>
+                
+                <Typography variant="caption" sx={{ display: "block", textAlign: "center", color: "rgba(255, 255, 255, 0.5)", fontSize: "0.7rem" }}>
+                  * Some premium features are only available for registered users
+                </Typography>
               </Box>
             )}
           </Box>

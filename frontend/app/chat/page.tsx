@@ -26,8 +26,10 @@ import SendIcon from "@mui/icons-material/Send";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
-import MicIcon from '@mui/icons-material/Mic'; // Import mic icon
-import MicOffIcon from '@mui/icons-material/MicOff'; // Import mic off icon
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline'; // Import for guest icon
+import LockIcon from '@mui/icons-material/Lock'; // Import for premium feature icon
 import { Message } from "@/types";
 import { supabase } from "../utils/config";
 import { 
@@ -91,6 +93,7 @@ function ChatContent() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isGuest, setIsGuest] = useState(false); // New state to track guest mode
   
   /**
    * Type definition for SpeechRecognition API
@@ -154,6 +157,7 @@ function ChatContent() {
    */
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [signupDialogOpen, setSignupDialogOpen] = useState(false); // New dialog for upgrade prompt
   const [currentFeedbackMessage, setCurrentFeedbackMessage] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   
@@ -252,26 +256,72 @@ function ChatContent() {
   useEffect(() => {
     const getUserId = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUserId(user.id);
+        // Check if user is in guest mode
+        const isGuestMode = searchParams.get("guest") === "true";
+        setIsGuest(isGuestMode);
+        
+        if (isGuestMode) {
+          // Get guest info from localStorage if available
+          const guestSession = localStorage.getItem("dishaGuestSession");
+          if (guestSession) {
+            const guestData = JSON.parse(guestSession);
+            setUserId(`guest_${guestData.id}`);
+          } else {
+            // Create a new guest session if none exists
+            const guestId = `guest_${Date.now()}`;
+            setUserId(guestId);
+            const randomGuestName = searchParams.get("name") || "Guest User";
+            localStorage.setItem("dishaGuestSession", JSON.stringify({
+              id: guestId,
+              name: randomGuestName,
+              timestamp: new Date().toISOString(),
+              isGuest: true
+            }));
+          }
+        } else {
+          // Regular user authentication check
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            setUserId(user.id);
+          } else {
+            // Redirect to login if not authenticated and not in guest mode
+            router.push("/");
+          }
         }
       } catch (error) {
         console.error("Error getting user:", error);
+        if (!isGuest) {
+          router.push("/");
+        }
       }
     };
     getUserId();  
     
     const name = searchParams.get("name");
     if (name?.trim()) {
-      setMessages([
-        {
-          sender: "ai",
-          text: `Hi ${name}, welcome! I'm Disha AI, here to guide your journey. How can I support you today?`,
-          timestamp: new Date(),
-          id: Date.now().toString(),
-        },
-      ]);
+      // Different welcome message for guest users
+      if (searchParams.get("guest") === "true") {
+        setMessages([
+          {
+            sender: "ai",
+            text: `Welcome ${name}! I'm Disha AI, your career guidance assistant. You're currently using guest mode with access to our basic features.\n\n` +
+                  `• Ask me questions about career advice, interview tips, or resume help\n\n` +
+                  `• For personalized job matching and career path planning, you'll need to create an account\n\n` +
+                  `How can I help you today?`,
+            timestamp: new Date(),
+            id: Date.now().toString(),
+          },
+        ]);
+      } else {
+        setMessages([
+          {
+            sender: "ai",
+            text: `Hi ${name}, welcome! I'm Disha AI, here to guide your journey. How can I support you today?`,
+            timestamp: new Date(),
+            id: Date.now().toString(),
+          },
+        ]);
+      }
     } else {
       router.push("/");
     }
@@ -319,13 +369,29 @@ function ChatContent() {
   };
 
   /**
+   * Show upgrade dialog for guest users
+   */
+  const handleShowUpgradeDialog = () => {
+    setSignupDialogOpen(true);
+  };
+
+  /**
+   * Navigate to signup page
+   */
+  const handleUpgradeAccount = () => {
+    setSignupDialogOpen(false);
+    router.push("/");
+  };
+
+  /**
    * Event handlers for user interactions
    */
   const handleQuickOptionClick = (option: string) => {
     handleChipClick(
       option,
       setMessages,
-      setIsLoading
+      setIsLoading,
+      isGuest
     );
   };
 
@@ -343,7 +409,9 @@ function ChatContent() {
       setMessages,
       setInput,
       setIsLoading,
-      textFieldRef
+      textFieldRef,
+      isGuest,
+      userId
     );
   };
 
@@ -374,6 +442,7 @@ function ChatContent() {
       setFeedbackDialogOpen,
       setSnackbarMessage,
       setSnackbarOpen,
+      isGuest
     });
   };
 
@@ -394,7 +463,8 @@ function ChatContent() {
       setLogoutDialogOpen,
       setSnackbarMessage,
       setSnackbarOpen,
-      router
+      router,
+      isGuest
     );
   };
   
@@ -419,7 +489,50 @@ function ChatContent() {
               DISHA AI
             </Typography>
           </div>
+          
+          {/* Guest Mode Indicator */}
+          {isGuest && (
+            <Tooltip title="You're using guest mode. Some features are limited.">
+              <Chip
+                icon={<PersonOutlineIcon />}
+                label="Guest Mode"
+                size="small"
+                onClick={handleShowUpgradeDialog}
+                sx={{
+                  ml: 2,
+                  bgcolor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' },
+                  borderRadius: '16px',
+                  cursor: 'pointer'
+                }}
+              />
+            </Tooltip>
+          )}
+          
           <Box sx={{ flexGrow: 1 }} />
+          
+          {/* Upgrade button for guest users */}
+          {isGuest && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<LockIcon />}
+              onClick={handleShowUpgradeDialog}
+              sx={{ 
+                mr: 2, 
+                color: 'white', 
+                borderColor: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderColor: 'white'
+                }
+              }}
+            >
+              Upgrade
+            </Button>
+          )}
+          
           <Tooltip title="Logout">
             <IconButton
               edge="end"
@@ -658,6 +771,74 @@ function ChatContent() {
             color="primary"
           >
             Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Upgrade Account Dialog for Guest Users */}
+      <Dialog
+        open={signupDialogOpen}
+        onClose={() => setSignupDialogOpen(false)}
+        aria-labelledby="upgrade-dialog-title"
+        maxWidth="sm"
+      >
+        <DialogTitle id="upgrade-dialog-title" sx={{ 
+          background: 'linear-gradient(90deg, #7c3aed 0%, #c026d3 100%)',
+          color: 'white',
+          pb: 3
+        }}>
+          Unlock Full Access to Disha AI
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Create an account to access premium features:
+            </Typography>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <LockIcon color="primary" />
+              <Typography>
+                <strong>Smart Career Path Generator:</strong> Get a personalized career roadmap based on your skills and goals
+              </Typography>
+            </Box>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <LockIcon color="primary" />
+              <Typography>
+                <strong>Personalized Job Matching:</strong> AI-powered job recommendations tailored to your profile
+              </Typography>
+            </Box>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <LockIcon color="primary" />
+              <Typography>
+                <strong>Skill Gap Analysis:</strong> Identify key skills to develop for your dream role
+              </Typography>
+            </Box>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <LockIcon color="primary" />
+              <Typography>
+                <strong>Progress Tracking:</strong> Save your career journey and track improvements
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setSignupDialogOpen(false)}>
+            Continue as Guest
+          </Button>
+          <Button 
+            onClick={handleUpgradeAccount} 
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(90deg, #7c3aed 0%, #c026d3 100%)',
+              '&:hover': {
+                background: 'linear-gradient(90deg, #6c2aed 0%, #a016b3 100%)',
+              },
+            }}
+          >
+            Create Account
           </Button>
         </DialogActions>
       </Dialog>
