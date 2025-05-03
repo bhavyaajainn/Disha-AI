@@ -278,15 +278,14 @@ def fetch_guest_user_context(anon_id):
 
 
 def add_context_messages(context, messages):
-    ephemeral_messages_added = 0
-    for ctx in list(context)[-6:]:
-        if "prompt" in ctx["context"] and "response" in ctx["context"]:
-            if ctx["context"]["response"].strip() != FALLBACK_GUARDRAIL_RESPONSE:
-                messages.append({"role": "user", "content": ctx["context"]["prompt"]})
-                messages.append({"role": "assistant", "content": ctx["context"]["response"]})
-                ephemeral_messages_added += 1
-                if ephemeral_messages_added >= 3:
-                    break
+    context_list = list(context)
+    
+    for ctx in context_list[-6:]:
+        
+        if isinstance(ctx, dict) and "context" in ctx and "prompt" in ctx["context"] and "response" in ctx["context"]:
+            messages.append({"role": "user", "content": ctx["context"]["prompt"]})
+            messages.append({"role": "assistant", "content": ctx["context"]["response"]})
+    
     return messages
 
 
